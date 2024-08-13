@@ -14,53 +14,115 @@ def vigenere(message, key, direction=1):
         new_index = (index + offset*direction) % len(alphabet)
         encrypted_message += alphabet[new_index]
     return encrypted_message
+
 def decrypt(message, key):
     return vigenere(message, key, -1)
 def encrypt(message, key):
     return vigenere(message, key)
-def create_password(tab_password):
+
+def reader(pather):
+    file = open(pather, 'r')
+    returning = file.read()
+    file.close()
+    return returning
+def writer(pather, elementer):
+    file = open(pather, 'w')
+    file.write(elementer)
+    file.close()
+
+def create_password(tab_password, master_password, pather):
     adder = input('\033[1;33mPassword to add : ')
     namer = input('\033[1;36mPassword name : ')
     tab_password.append({'name': encrypt(namer, master_password), 'pass': encrypt(adder, master_password)})
-    file = open(pather, 'w')
-    file.write(json.dumps(tab_password))
-    file.close()
-    if input('\033[1;34mAdd new password ? [y/n] \033[0m') == 'y':
-        create_password(tab_password)
-    return tab_password
+    print('\n\033[1;32mPassword added successfully !')
+    writer(pather, json.dumps(tab_password))
+def remove_password(pather, passer):
+    element= json.loads(reader(pather))
+    if len(element) != 1:
+        i = 1
+        while i < len(element):
+            print(f'\033[1;32mPassword name n°{i} : ' + f'\033[1;35m{decrypt(element[i]['name'], passer)}')
+            i += 1
+        remove_this = input('\033[1;33mPassword to remove : ')
+        element.pop(int(remove_this))
+        writer(pather, json.dumps(element))
+        print('\n\033[1;32mPassword removed successfully !\033[0m')
+    else:
+        print('This password group is empty !')
+
+def create_file():
+    tab_password = []
+    pather = input('\033[1;33mName and file path  : ') + '.json'
+    master_password = input('\033[1;36mMaster password : ')
+    securiter = encrypt('yes', master_password)
+    tab_password.append({'name': securiter})
+    writer(pather, json.dumps(tab_password))
+    print('\n\033[1;32mFile created successfully !')
+def delete_file():
+    print('delete file')
+
 def find_password(passer, in_file):
     element= json.loads(in_file)
     i = 1
     while i < len(element):
         print(f'\033[1;32mPassword name n°{i} : ' + f'\033[1;35m{decrypt(element[i]['name'], passer)}')
         i += 1
-    print(f'\033[1;32mPassword : \033[1;35m{decrypt(element[int(input('\033[1;33mPassword name number : '))]['pass'], passer)}')
-    if input('\033[1;34mFind other password ? [y/n] \033[0m') == 'y':
-        find_password(passer, in_file)
-    return
-    
-todo = input('\033[1;34mCreate or select passwordGroup ? [c/s] \033[0m')
-if todo == 'c':
-    tab_password = []
-    pather = input('\033[1;33mName and file path  : ') + '.json'
-    file = open(pather, 'w')
-    master_password = input('\033[1;36mMaster password : ')
-    securiter = encrypt('yes', master_password)
-    tab_password.append({'name': securiter})
-    file.write(json.dumps(tab_password))
-    file.close()
-    if input('\033[1;34mAdd new password ? [y/n] \033[0m') == 'y':
-        create_password(tab_password)
-    else:
-        print('\033[1;32mRegistred !\033[1;0m')
-elif todo == 's':
-    file = open(input('\033[1;33mFile path : '), 'r')
+    print(f'\n\033[1;32mPassword : \033[1;35m{decrypt(element[int(input('\033[1;33mPassword name number : '))]['pass'], passer)}')
+
+def identify():
+    path = input('\033[1;33mFile path : ')
     passer = input('\033[1;36mMaster password : ')
-    in_file = file.read()
+    in_file = reader(path)
     verify_pass = decrypt(json.loads(in_file)[0]['name'], passer)
     if verify_pass == 'yes':
-        find_password(passer, in_file)
+        print('\n\033[1;32mAccess allowed')
+        return [True, passer, path, json.loads(in_file)]
     else:
-        print('\033[1;31mWrong master password !\033[0m')
-else:
-    print(f'\033[1;31merror : \'{todo}\'\033[0m')
+        print('\n\033[1;31mAccess denied : wrong master password !\033[0m')
+        defaulter()
+
+def defaulter():
+    todo = input('\033[1;37mPS passwordManager>\033[1;90m ')
+    if todo == 'create' or todo == 'ct':
+        create_file()
+        defaulter()
+    elif todo == 'select' or todo =='slct':
+        pather = input('\033[1;33mFile path : ')
+        passer = input('\033[1;36mMaster password : ')
+        in_file = reader(pather)
+        verify_pass = decrypt(json.loads(in_file)[0]['name'], passer)
+        if verify_pass == 'yes':
+            find_password(passer, in_file)
+            defaulter()
+        else:
+            print('\033[1;31mWrong master password !\033[0m')
+            defaulter()
+    elif todo == 'add':
+        result = identify()
+        if result[0] == True:
+            create_password(result[3], result[1], result[2])
+            defaulter()
+    elif todo == 'remove' or todo == 'rm':
+        result = identify()
+        remove_password(result[2], result[1])
+        defaulter()
+    elif todo == 'delete':
+        delete_file()
+        defaulter()
+    elif todo == 'help' or todo == 'h':
+        print('\033[1;37m - create :\n    \033[1;90mTo create a password group (JSON file)')
+        print('\033[1;37m - delete : \n\033[1;90m    To delete a password group')
+        print('\033[1;37m - add :\n\033[1;90m    To add a password in a group')
+        print('\033[1;37m - remove, rm :\n\033[1;90m    To remove a password in a group')
+        print('\033[1;37m - select, slct :\n\033[90m    To get password in a group')
+        print('\033[1;37m - help, h :\n\033[1;90m    For help\033[0m')
+        defaulter()
+    elif todo == 'quit' or todo == 'exit' or todo == 'q':
+        print('\033[0m')
+    elif todo == '':
+        defaulter()
+    else:
+        print(f'\033[1;31merror : \'{todo}\'\033[0m')
+        defaulter()
+
+defaulter()
