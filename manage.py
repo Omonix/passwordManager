@@ -1,8 +1,20 @@
+import random
 import string
 import json
 
 alphabet = '    ' + ' ' + string.punctuation + string.ascii_letters + string.digits
 
+def genPassword(length, special='true'):
+    simple_alphabet = string.ascii_letters + string.digits
+    pwd = ""
+    i = 0
+    while i < length:
+        if special == 'true':
+            pwd += random.choice(alphabet)
+        else:
+            pwd += random.choice(simple_alphabet)
+        i = i + 1
+    return pwd
 def vigenere(message, key, direction=1):
     key_index = 0
     encrypted_message = ''
@@ -109,12 +121,16 @@ def defaulter():
     elif todo == 'delete':
         delete_file()
         defaulter()
+    elif todo == 'gpwd' or todo == 'genpwd':
+        print(f'\033[1;32mPassword generated : \033[1;35m{genPassword(int(input('\033[1;33mPassword length : ')), input('\033[1;36mAdd special characters [true/false] '))}\033[0m')
+        defaulter()
     elif todo == 'help' or todo == 'h':
-        print('\033[1;37m - create :\n    \033[1;90mTo create a password group (JSON file)')
+        print('\033[1;37m - create :\n    \033[1;90m    To create a password group (JSON file)')
         print('\033[1;37m - delete : \n\033[1;90m    To delete a password group')
         print('\033[1;37m - add :\n\033[1;90m    To add a password in a group')
         print('\033[1;37m - remove, rm :\n\033[1;90m    To remove a password in a group')
         print('\033[1;37m - select, slct :\n\033[90m    To get password in a group')
+        print('\033[1;37m - gpwd, genpwd :\n\033[90m    To generate a password with a length')
         print('\033[1;37m - help, h :\n\033[1;90m    For help\033[0m')
         defaulter()
     elif todo == 'quit' or todo == 'exit' or todo == 'q':
