@@ -1,9 +1,7 @@
 from PyQt6.QtWidgets import QLabel, QCheckBox, QTextEdit, QScrollArea, QToolButton, QApplication, QListWidget, QStackedWidget, QHBoxLayout, QFileDialog, QWidget, QVBoxLayout, QMainWindow, QPushButton, QLineEdit
 from PyQt6.QtCore import QPropertyAnimation, pyqtProperty, QEasingCurve, Qt
 from PyQt6.QtGui import QColor, QIntValidator, QIcon
-import sys, string, json, random, os
-
-alphabet = ' ëêéèçïìîäàâüùûöòôÿ§£¤²°' + string.punctuation + string.ascii_letters + string.digits
+import sys, string, json, random, os, math
 
 def resource_path(relative_path):
     if hasattr(sys, "_MEIPASS"):
@@ -26,21 +24,45 @@ def generate_password(input, check_list, length):
         if personal_alphabet != '':
             input.setText(generator(personal_alphabet, int(length)))
             input.sub.close()
-def vigenere(message, key, direction=1):
-    key_index = 0
-    encrypted_message = ''
+def is_prime(n):
+    if n < 2: return False
+    if n == 2: return True
+    if n % 2 == 0: return False
+    for i in range(3, int(math.sqrt(n)) + 1, 2):
+        if n % i == 0:
+            return False
+    return True
+def get_func(seed):
+    root = int(math.sqrt(seed))
+    for i in range(root, 0, -1):
+        if is_prime(i):
+            p = i
+            c = math.fabs(((seed % i) - seed) / i)
+            a = seed % i
+            return (int(f'{'-' if len(f'{seed}') % 2 == 0 else '+'}{p}'), int(f'{'+' if is_prime(c) else '-'}{a}'))
+def get_seed(password):
+    seed = 0
+    for l in password:
+        seed += ord(l)
+    return seed
+def encryptor(message, password, d=1):
+    func_coeff = get_func(get_seed(password))
+    index_pass = 0
+    text = ''
     for char in message:
-        key_char = key[key_index % len(key)]
-        key_index += 1
-        offset = alphabet.index(key_char)
-        index = alphabet.find(char)
-        new_index = (index + offset*direction) % len(alphabet)
-        encrypted_message += alphabet[new_index]
-    return encrypted_message
-def decrypt(message, key):
-    return vigenere(message, key, -1)
-def encrypt(message, key):
-    return vigenere(message, key)
+        char_pass = password[index_pass % len(password)]
+        index_pass += 1
+        offset = ord(char_pass)
+        index = ord(char)
+        new_index = 0
+        if d + 1:
+            new_index = (index + offset * d) % 1114080
+            new_index = func_coeff[0] * new_index + func_coeff[1]
+        else:
+            new_index = (index - func_coeff[1]) // func_coeff[0]
+            new_index = (new_index + offset * d) % 1114080
+        text += chr(new_index)
+    return text
 def open_ppss():
     path, _ = QFileDialog.getOpenFileName(window, "Open file", "", "PassPass file save (*.ppss)")
     if path:
@@ -48,16 +70,16 @@ def open_ppss():
         window.sub_window('Open a safe', 350, 150, infos_to_load)
 def sub_open_ppss(path, master):
     if master != '':
-        with open(path, 'r') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             name = link_to_name(path)
             file_infos = f.read()
-            if decrypt(file_infos[:len(name)], master) == name:
+            if encryptor(file_infos[:len(name)], master, -1) == name:
                 window.sub.close()
                 if len(name) < len(master):
                     len_to_take = len(master)
                 else:
                     len_to_take = len(name)
-                datas = decrypt(file_infos, master)[len_to_take:]
+                datas = encryptor(file_infos, master, -1)[len_to_take:]
                 window.open_window(DetailWindow(path, master, 576, 324, json.loads(datas) if datas != '' else []))
                 window.sub.show()
                 window.hide()
@@ -68,9 +90,9 @@ def sub_open_ppss(path, master):
 def create_ppss(name, master):
     if name != '' and master != '':
         filename = name
-        with open('./' + filename + '.ppss', 'w') as f:
+        with open('./' + filename + '.ppss', 'w', encoding='utf-8') as f:
             filename = get_real_filename(filename, len(master))
-            f.write(encrypt(filename, master))
+            f.write(encryptor(filename, master))
         window.sub.close()
         window.show()
 def originalWindow():
@@ -84,10 +106,10 @@ def save_add(name, username, email, passw, passw2, note):
     if name != '' and passw != '' and passw == passw2:
         items = window.sub.items.copy()
         items.append({'name': name, 'username': username, 'email': email, 'password': passw, 'note': note})
-        with open(window.sub.path, 'w') as f:
+        with open(window.sub.path, 'w', encoding='utf-8') as f:
             filename = link_to_name(window.sub.path)
             filename = get_real_filename(filename, len(window.sub.master))
-            f.write(encrypt(filename + json.dumps(items), window.sub.master))
+            f.write(encryptor(filename + json.dumps(items), window.sub.master))
         window.sub.items = items
         window.sub.get_items()
         window.sub.sub.close()
@@ -108,20 +130,20 @@ def save_change(old_name, name, username, email, passw, passw2, note):
         for i in range(len(window.sub.items)):
             if window.sub.items[i]['name'] == old_name:
                 window.sub.items[i] = {'name': name, 'username': username, 'email': email, 'password': passw, 'note': note}
-                with open(window.sub.path, 'w') as f:
+                with open(window.sub.path, 'w', encoding='utf-8') as f:
                     filename = link_to_name(window.sub.path)
                     filename = get_real_filename(filename, len(window.sub.master))
-                    f.write(encrypt(filename + json.dumps(window.sub.items), window.sub.master))
+                    f.write(encryptor(filename + json.dumps(window.sub.items), window.sub.master))
                 window.sub.get_items()
                 break
 def delete_item(name):
     for i in range(len(window.sub.items)):
         if window.sub.items[i]['name'] == name:
             del window.sub.items[i]
-            with open(window.sub.path, 'w') as f:
+            with open(window.sub.path, 'w', encoding='utf-8') as f:
                 filename = link_to_name(window.sub.path)
                 filename = get_real_filename(filename, len(window.sub.master))
-                f.write(encrypt(filename + json.dumps(window.sub.items), window.sub.master))
+                f.write(encryptor(filename + json.dumps(window.sub.items), window.sub.master))
             window.sub.get_items()
             break
 
