@@ -101,7 +101,7 @@ def get_real_filename(filename, master_length):
             real_filename += filename[i]
     return real_filename
 def add_new_pass():
-    infos_to_add = {'name': AnimatedInput('Name...'), 'username': AnimatedInput('Username...'), 'email': AnimatedInput('Email...'), 'password': AnimatedInput('Password...', 128, password=True), 'passwordToo': AnimatedInput('Repeat...', 128, generator=False, password=True), 'note': AnimatedTextArea('Note...', 80, 250), 'func': AnimatedButton('Add', lambda: save_add(infos_to_add['name'].text(), infos_to_add['username'].text(), infos_to_add['email'].text(), infos_to_add['password'].text(), infos_to_add['passwordToo'].text(), infos_to_add['note'].toPlainText()))}
+    infos_to_add = {'name': AnimatedInput('Name...', 16), 'username': AnimatedInput('Username...'), 'email': AnimatedInput('Email...'), 'password': AnimatedInput('Password...', 999, password=True), 'passwordToo': AnimatedInput('Repeat...', 999, generator=False, password=True), 'note': AnimatedTextArea('Note...', 80, 250), 'func': AnimatedButton('Add', lambda: save_add(infos_to_add['name'].text(), infos_to_add['username'].text(), infos_to_add['email'].text(), infos_to_add['password'].text(), infos_to_add['passwordToo'].text(), infos_to_add['note'].toPlainText()))}
     window.sub.sub_window('Add a password', 350, 350, infos_to_add)
 def save_change(old_name, name, username, email, passw, passw2, note):
     if name != '' and passw != '' and passw == passw2:
@@ -160,19 +160,62 @@ class DetailWindow(QMainWindow):
 
         container = QWidget()
         layout = QHBoxLayout(container)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
         self.setCentralWidget(container)
 
         sub_container = QWidget()
         sub_layout = QVBoxLayout(sub_container)
-        sub_layout.setContentsMargins(20, 20, 20, 20)
+        sub_layout.setContentsMargins(10, 10, 10, 10)
 
         self.lister = QListWidget()
         self.stacker = QStackedWidget()
         sub_container.setFixedWidth(150)
         self.get_items()
 
+        self.lister.setStyleSheet("""
+            QListWidget {
+                background-color: #323232;
+                border: none;
+                border-radius: 10px;
+                padding: 6px;
+                outline: 0;
+            }
+            QListWidget::item {
+                background-color: transparent;
+                color: white;
+                border-radius: 8px;
+                padding: 5px 7px;
+                margin: 2px 4px 0 0;
+            }
+            QListWidget::item:hover {
+                background-color: #346D2A;
+            }
+            QListWidget::item:selected {
+                background-color: #35a721;
+            }
+            QListWidget::item:selected:hover {
+                background-color: #287E19;
+            }
+            /* Scrollbar */
+            QScrollBar:vertical {
+                background: #287E19;
+                width: 6px;
+                border-radius: 3px;
+            }
+            QScrollBar::handle:vertical {
+                background: #35a721;
+                border-radius: 3px;
+                min-height: 30px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #60e05c;
+            }
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {
+                height: 0;
+            }
+        """)
         self.lister.currentRowChanged.connect(self.stacker.setCurrentIndex)
         self.lister.setCurrentRow(0)
 
@@ -193,7 +236,7 @@ class DetailWindow(QMainWindow):
     def make_page(self, item):
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setContentsMargins(30, 30, 30, 30)
         layout.setSpacing(10)
         text_name = QLabel(f'<h1>{item['name']}</h1>')
         text_name.setStyleSheet("""
@@ -207,7 +250,7 @@ class DetailWindow(QMainWindow):
         scroll.setWidget(page)
         func_widget = QWidget()
         func_layout = QHBoxLayout(func_widget)
-        all_inputs = {'name': AnimatedInput('Name...'), 'username': AnimatedInput('Username...'), 'email': AnimatedInput('Email...'), 'password': AnimatedInput('Password...', 128, password=True), 'repeat': AnimatedInput('Repeat...', 128, generator=False, password=True), 'note': AnimatedTextArea('Note...', 80, 250), 'func': func_widget}
+        all_inputs = {'name': AnimatedInput('Name...'), 'username': AnimatedInput('Username...'), 'email': AnimatedInput('Email...'), 'password': AnimatedInput('Password...', 999, password=True), 'repeat': AnimatedInput('Repeat...', 999, generator=False, password=True), 'note': AnimatedTextArea('Note...', 80, 250), 'func': func_widget}
         func_layout.addWidget(AnimatedButton('Save', lambda: save_change(item['name'], all_inputs['name'].text(), all_inputs['username'].text(), all_inputs['email'].text(), all_inputs['password'].text(), all_inputs['repeat'].text(), all_inputs['note'].toPlainText())))
         func_layout.addWidget(AnimatedButton('Delete', lambda: delete_item(item['name']), "#a72121", "#e05c5c"))
         for key, input in all_inputs.items():
