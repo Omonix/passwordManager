@@ -66,7 +66,8 @@ def encryptor(message, password, d=1):
 def open_ppss():
     path, _ = QFileDialog.getOpenFileName(window, "Open file", "", "PassPass file save (*.ppss)")
     if path:
-        infos_to_load = {'password': AnimatedInput('Password...', 128, generator=False, password=True), 'func': AnimatedButton('Open', lambda: sub_open_ppss(path, infos_to_load['password'].text()))}
+        open_safe_func = lambda: sub_open_ppss(path, infos_to_load['password'].text())
+        infos_to_load = {'password': AnimatedInput('Password...', 128, generator=False, password=True, func=open_safe_func), 'func': AnimatedButton('Open', open_safe_func)}
         window.sub_window('Open a safe', 350, 150, infos_to_load)
 def sub_open_ppss(path, master):
     if master != '':
@@ -96,7 +97,8 @@ def create_ppss(name, master):
         window.sub.close()
         window.show()
 def originalWindow():
-    infos_to_create = {'name': AnimatedInput('Name...'), 'password': AnimatedInput('Password...', 128, password=True), 'func': AnimatedButton('Create', lambda: create_ppss(infos_to_create['name'].text(), infos_to_create['password'].text()))}
+    create_safe_func = lambda: create_ppss(infos_to_create['name'].text(), infos_to_create['password'].text())
+    infos_to_create = {'name': AnimatedInput('Name...', func=create_safe_func), 'password': AnimatedInput('Password...', 128, password=True, func=create_safe_func), 'func': AnimatedButton('Create', create_safe_func)}
     button_create = AnimatedButton('Create a safe', lambda: window.sub_window('Create a safe', 350, 150, infos_to_create))
     button_open = AnimatedButton("Open a safe", open_ppss)
 
@@ -111,7 +113,7 @@ def save_add(name, username, email, passw, passw2, note):
             filename = get_real_filename(filename, len(window.sub.master))
             f.write(encryptor(filename + json.dumps(items), window.sub.master))
         window.sub.items = items
-        window.sub.get_items()
+        window.sub.get_items(items)
         window.sub.sub.close()
         window.sub.show()
 def link_to_name(link):
@@ -123,7 +125,8 @@ def get_real_filename(filename, master_length):
             real_filename += filename[i]
     return real_filename
 def add_new_pass():
-    infos_to_add = {'name': AnimatedInput('Name...', 16), 'username': AnimatedInput('Username...'), 'email': AnimatedInput('Email...'), 'password': AnimatedInput('Password...', 999, password=True), 'passwordToo': AnimatedInput('Repeat...', 999, generator=False, password=True), 'note': AnimatedTextArea('Note...', 80, 250), 'func': AnimatedButton('Add', lambda: save_add(infos_to_add['name'].text(), infos_to_add['username'].text(), infos_to_add['email'].text(), infos_to_add['password'].text(), infos_to_add['passwordToo'].text(), infos_to_add['note'].toPlainText()))}
+    my_func=lambda: save_add(infos_to_add['name'].text(), infos_to_add['username'].text(), infos_to_add['email'].text(), infos_to_add['password'].text(), infos_to_add['passwordToo'].text(), infos_to_add['note'].toPlainText())
+    infos_to_add = {'name': AnimatedInput('Name...', 16, func=my_func), 'username': AnimatedInput('Username...', func=my_func), 'email': AnimatedInput('Email...', func=my_func), 'password': AnimatedInput('Password...', 999, password=True, func=my_func), 'passwordToo': AnimatedInput('Repeat...', 999, generator=False, password=True, func=my_func), 'note': AnimatedTextArea('Note...', 80, 250), 'func': AnimatedButton('Add', my_func)}
     window.sub.sub_window('Add a password', 350, 350, infos_to_add)
 def save_change(old_name, name, username, email, passw, passw2, note):
     if name != '' and passw != '' and passw == passw2:
@@ -134,7 +137,7 @@ def save_change(old_name, name, username, email, passw, passw2, note):
                     filename = link_to_name(window.sub.path)
                     filename = get_real_filename(filename, len(window.sub.master))
                     f.write(encryptor(filename + json.dumps(window.sub.items), window.sub.master))
-                window.sub.get_items()
+                window.sub.get_items(window.sub.items)
                 break
 def delete_item(name):
     for i in range(len(window.sub.items)):
@@ -144,8 +147,14 @@ def delete_item(name):
                 filename = link_to_name(window.sub.path)
                 filename = get_real_filename(filename, len(window.sub.master))
                 f.write(encryptor(filename + json.dumps(window.sub.items), window.sub.master))
-            window.sub.get_items()
+            window.sub.get_items(window.sub.items)
             break
+def search_password(text):
+    new_list = []
+    for item in window.sub.items:
+        if text.lower() == item['name'].lower()[:len(text)]:
+            new_list.append(item)
+    window.sub.get_items(new_list)
 
 class MainWindow(QMainWindow):
     def __init__(self, title='Pass Pass', width=100, height=100):
@@ -190,10 +199,14 @@ class DetailWindow(QMainWindow):
         sub_layout = QVBoxLayout(sub_container)
         sub_layout.setContentsMargins(10, 10, 10, 10)
 
+        sub_option_container = QWidget()
+        sub_option_layout = QHBoxLayout(sub_option_container)
+        sub_option_layout.setContentsMargins(5, 5, 5, 5)
+
         self.lister = QListWidget()
         self.stacker = QStackedWidget()
-        sub_container.setFixedWidth(150)
-        self.get_items()
+        sub_container.setFixedWidth(200)
+        self.get_items(self.items)
 
         self.lister.setStyleSheet("""
             QListWidget {
@@ -242,17 +255,20 @@ class DetailWindow(QMainWindow):
         self.lister.setCurrentRow(0)
 
         layout.addWidget(sub_container)
+        sub_layout.addWidget(sub_option_container)
         button_test = AnimatedButton('Add', add_new_pass)
-        sub_layout.addWidget(button_test)
+        button_search = AnimatedInput('Search...', 16, 35, colora='#323232', colorb='#484848', text_color='#ffffff', func=lambda: search_password(button_search.text()))
+        sub_option_layout.addWidget(button_test)
+        sub_option_layout.addWidget(button_search)
         sub_layout.addWidget(self.lister)
         layout.addWidget(self.stacker)
-    def get_items(self):
+    def get_items(self, items):
         self.lister.clear()
         while self.stacker.count() > 0:
             widget = self.stacker.widget(0)
             self.stacker.removeWidget(widget)
             widget.deleteLater()
-        for item in self.items:
+        for item in items:
             self.lister.addItem(item['name'])
             self.stacker.addWidget(self.make_page(item))
     def make_page(self, item):
@@ -293,7 +309,6 @@ class DetailWindow(QMainWindow):
             layout.addWidget(info)
         self.sub.show()
         self.hide()
-
 class AnimatedBase:
     def init_animation(self, colora, colorb, duration=600):
         self._color = QColor(colora)
@@ -355,19 +370,23 @@ class AnimatedButton(QPushButton, AnimatedBase):
                 background-color: {self._color.name()};
                 color: #ffffff;
                 border-radius: 8px;
-                padding: 10px 24px;
+                padding: 8px 20px;
                 font-size: 14px;
                 border: none;
             }}
         """)
 class AnimatedInput(QLineEdit, AnimatedBase):
-    def __init__(self, placeholder, maxChar=50, height=30, password=False, generator=True, onlyNumber=False, colora='#35a721', colorb='#60e05c', parent=None):
+    def __init__(self, placeholder, maxChar=50, height=30, password=False, generator=True, onlyNumber=False, colora='#35a721', colorb='#60e05c', text_color='#000000', func=None, parent=None):
         super().__init__(parent)
         self.setPlaceholderText(placeholder)
         self.setFixedHeight(height)
         self.setMaxLength(maxChar)
+        self.setStyleSheet(f"color: {text_color};")
+        self.text_color = text_color
         self.init_animation(colora, colorb)
 
+        if func:
+            self.returnPressed.connect(func)
         if onlyNumber:
             validator = QIntValidator()
             self.setValidator(validator)
@@ -387,7 +406,7 @@ class AnimatedInput(QLineEdit, AnimatedBase):
                 background: transparent;
                 font-size: 14px;
                 font-family: 'Segoe UI Symbol';
-                color: #000000;
+                color: {self.text_color};
             }}
         """)
         self.die_btn.toggled.connect(self.open_randomer)
@@ -426,7 +445,7 @@ class AnimatedInput(QLineEdit, AnimatedBase):
                 background: transparent;
                 font-size: 14px;
                 font-family: 'Segoe UI Symbol';
-                color: #000000;
+                color: {self.text_color};
             }}
         """)
         self.eye_btn.toggled.connect(self.toggle_view)
@@ -457,7 +476,7 @@ class AnimatedInput(QLineEdit, AnimatedBase):
                 border-radius: 8px;
                 padding: 4px;
                 font-size: 14px;
-                color: #000000;
+                color: {self.text_color};
             }}
         """)
 
