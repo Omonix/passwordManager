@@ -24,6 +24,41 @@ def generate_password(input, check_list, length):
         if personal_alphabet != '':
             input.setText(generator(personal_alphabet, int(length)))
             input.sub.close()
+def char_to_index(ch):
+    code = ord(ch)
+    match code:
+        case 0:
+            return 0
+        case 9:
+            return 1
+        case 10:
+            return 2
+        case 11:
+            return 3
+        case 12:
+            return 4
+        case 13:
+            return 5
+        case _ if 32 <= code:
+            return 6 + (code - 32)
+    return 0
+def index_to_char(index):
+    match index:
+        case 0:
+            return chr(0)
+        case 1:
+            return chr(9)
+        case 2:
+            return chr(10)
+        case 3:
+            return chr(11)
+        case 4:
+            return chr(12)
+        case 5:
+            return chr(13)
+        case _ if index >= 6:
+            return chr(index - 6 + 32)
+    return chr(0)
 def is_prime(n):
     if n < 2: return False
     if n == 2: return True
@@ -33,13 +68,15 @@ def is_prime(n):
             return False
     return True
 def get_func(seed):
-    root = int(math.sqrt(seed))
+    correct_seed = seed
+    root = int(math.sqrt(correct_seed))
     for i in range(root, 0, -1):
-        if is_prime(i):
-            p = i
-            c = math.fabs(((seed % i) - seed) / i)
-            a = seed % i
-            return (int(f'{'-' if len(f'{seed}') % 2 == 0 else '+'}{p}'), int(f'{'+' if is_prime(c) else '-'}{a}'))
+        if is_prime(i) and i not in [2, 3, 185681]:
+            a = correct_seed % i
+            c = math.fabs((a - correct_seed) / i)
+            return (int(f'{'-' if len(f'{correct_seed}') % 2 == 0 else '+'}{i}'), int(f'{'+' if is_prime(c) else '-'}{a}'))
+        else:
+            return (1, 0)
 def get_seed(password):
     seed = 0
     for l in password:
@@ -50,18 +87,17 @@ def encryptor(message, password, d=1):
     index_pass = 0
     text = ''
     for char in message:
-        char_pass = password[index_pass % len(password)]
         index_pass += 1
-        offset = ord(char_pass)
-        index = ord(char)
+        offset = ord(password[index_pass % len(password)])
+        index = char_to_index(char)
         new_index = 0
         if d + 1:
-            new_index = (index + offset * d) % 1114080
-            new_index = func_coeff[0] * new_index + func_coeff[1]
+            new_index = (index + offset * d) % 1114086
+            new_index = (func_coeff[0] * new_index + func_coeff[1]) % 1114086
         else:
-            new_index = (index - func_coeff[1]) // func_coeff[0]
-            new_index = (new_index + offset * d) % 1114080
-        text += chr(new_index)
+            new_index = (pow(func_coeff[0], -1, 1114086) * (index - func_coeff[1])) % 1114086
+            new_index = (new_index + offset * d) % 1114086
+        text += index_to_char(new_index)
     return text
 def open_ppss():
     path, _ = QFileDialog.getOpenFileName(window, "Open file", "", "PassPass file save (*.ppss)")
@@ -74,6 +110,7 @@ def sub_open_ppss(path, master):
         with open(path, 'r', encoding='utf-8') as f:
             name = link_to_name(path)
             file_infos = f.read()
+            print(name, encryptor(file_infos[:len(name)], master, -1))
             if encryptor(file_infos[:len(name)], master, -1) == name:
                 window.sub.close()
                 if len(name) < len(master):
